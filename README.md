@@ -1,2 +1,3 @@
 # ETL-Script-Implementation-for-Remote-Server-Data-Processing
-Developed and executed an Extract, Transform, and Load (ETL) script for a remote server file, demonstrating proficiency in data processing and manipulation
+Developed and executed an Extract, Transform, and Load (ETL) script for a remote server file, demonstrating proficiency in data processing and manipulation. Key tasks include parameter validation, secure file transfer, data compression and decompression, text processing, record filtering, currency symbol removal, sorting, and summary report generation. Ensured data integrity by handling exceptions and cleaning up intermediate files. The script delivers a comprehensive ETL process, contributing to efficient data management and analysis.
+
