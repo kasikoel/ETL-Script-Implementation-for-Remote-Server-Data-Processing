@@ -1,0 +1,84 @@
+#!/bin/bash
+  
+   # Function to print the usage statement
+   print_usage() {
+     echo "Usage: etl.sh remote-server remote-userid remote-file"
+     echo "Example: etl.sh 40.69.135.45 user1 /home/shared/MOCK MIX v2.1.csv.bz2"
+   }
+  
+  # Check if the required parameters are provided
+  if [ $# -ne 3 ]; then
+    print_usage
+    exit 1
+  fi
+ 
+  # Assign parameters to variables
+  remote_server=$1
+  remote_userid=$2
+  remote_file=$3
+ 
+  # Step 1: Transfer the source file using scp
+  echo "Step 1: Transferring the source file..."
+  scp "$remote_userid@$remote_server:$remote_file" ./transaction.csv.bz2
+ 
+  # Step 2: Unzip the transaction file
+  echo "Step 2: Unzipping the transaction file..."
+  bunzip2 -k transaction.csv.bz2
+ 
+  # Step 3: Remove the header record from the transaction file
+  echo "Step 3: Removing the header record..."
+  tail -n +2 transaction.csv > transaction_no_header.csv
+ 
+  # Step 4: Convert all text in the transaction file to lowercase
+  echo "Step 4: Converting text to lowercase..."
+  tr '[:upper:]' '[:lower:]' < transaction_no_header.csv > transaction_lower_case.csv
+# Step 5: Convert gender values
+  echo "Step 5: Converting gender values..."
+  awk -F',' -v OFS=',' '{ if ($5 == "1" || $5 == "female") $5 = "f"; else if ($5 == "0" || $5 == "male") $5 = "m"; else $5 = "u"; print }' transaction_lower_case.csv > transaction_gender_converted.csv
+ 
+  # Step 6: Filter records with invalid states
+  echo "Step 6: Filtering records with invalid states..."
+  awk -F',' -v OFS=',' '{ if ($11 == "" || $11 == "NA") { print >> "exceptions.csv"; next } print }' transaction_gender_converted.csv > transaction_filtered.csv
+ 
+  # Step 7: Remove $ sign from purchase amount
+  echo "Step 7: Removing $ sign from purchase amount..."
+  sed 's/\$//g' transaction_filtered.csv > transaction_no_dollar.csv
+ 
+  # Step 8: Sort transaction file by customerID
+  echo "Step 8: Sorting transaction file by customerID..."
+  sort -t',' -k1,1 transaction_no_dollar.csv > transaction.csv
+ 
+  # Step 9: Generate summary file
+  echo "Step 9: Generating summary file..."
+  awk -F',' -v OFS=',' '{ total[$1] += $7 } END { for (key in total) print key, total[key] }' transaction.csv | sort -t',' -k2,2nr > summary.csv
+awk -F ',' '{
+  	customerid = $1
+  	state = $5
+  	zip = $6
+  	lastname = $3
+  	firstname = $2
+  	purchase = $4
+ 
+  	#Purchase for each customer ID
+  	total[customerid] += purchase
+  	ustate[customerid] = state
+  	uzip[customerid] = zip
+  	ulname[customerid] = lastname
+  	ufirstname[customerid] = firstname
+  }
+  END {
+  	# Printing
+  	for (customerid in total)
+      	print customerid, ustate[customerid], uzip[customerid], ulname[customerid]
+  }' FS=',' transaction.csv | sort -t',' -k2,2 -k3,3nr -k4,4 -k5,5 > summary.csv
+ 
+  # Step 10: Cleanup intermediate files
+  echo "Step 10: Cleaning up intermediate files..."
+  rm transaction.csv.bz2 transaction_no_header.csv transaction_lower_case.csv transaction_gender_converted.csv transaction_filtered.csv transaction_no_dollar.csv
+ 
+  echo "ETL process completed successfully!"
+
+
+
+
+
